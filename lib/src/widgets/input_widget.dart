@@ -286,10 +286,13 @@ class _InputWidgetState extends State<_InputWidget> {
 
   @override
   void initState() {
-    Future.delayed(Duration.zero, () => _loadCountries(context));
+    //Future.delayed(Duration.zero, () => _loadCountries(context));
     controller = widget.textFieldController ?? TextEditingController();
     controller.addListener(_phoneNumberControllerListener);
     super.initState();
+
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _loadCountries(context));
   }
 
   @override
