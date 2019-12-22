@@ -227,6 +227,8 @@ class _InputWidgetState extends State<_InputWidget> {
 
     provider.country = Utils.getInitialSelectedCountry(
         provider.countries, widget.initialCountry2LetterCode);
+
+    provider.loadedCount = 1;
   }
 
   void _phoneNumberControllerListener() {
@@ -286,13 +288,10 @@ class _InputWidgetState extends State<_InputWidget> {
 
   @override
   void initState() {
-    //Future.delayed(Duration.zero, () => _loadCountries(context));
+    Future.delayed(Duration.zero, () => _loadCountries(context));
     controller = widget.textFieldController ?? TextEditingController();
     controller.addListener(_phoneNumberControllerListener);
     super.initState();
-
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _loadCountries(context));
   }
 
   @override
@@ -300,6 +299,7 @@ class _InputWidgetState extends State<_InputWidget> {
     controller?.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -310,9 +310,11 @@ class _InputWidgetState extends State<_InputWidget> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          provider.countries != null && provider.countries.isNotEmpty
+          provider.loadedCount > 0
           ? FutureBuilder<List<DropdownMenuItem<Country>>>(
-              future: CountryProvider.getDropdownItemsFromList(provider.countries),
+              future: provider.loadedCount == 1 
+              ? CountryProvider.getDropdownItemsFromCountry(provider.country)
+              : CountryProvider.getDropdownItemsFromList(provider.countries),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Text('Error loading countries');
@@ -323,15 +325,19 @@ class _InputWidgetState extends State<_InputWidget> {
                       value: provider.country,
                       onChanged: widget.isEnabled
                       ? (value) {
-                          print(value);
-                          provider.country = value;
-                          _phoneNumberControllerListener();
+                          if (provider.loadedCount == 1 && value.dialCode == '_more_') {
+                            provider.loadedCount = provider.countries.length;
+                          } else {
+                            print(value);
+                            provider.country = value;
+                            _phoneNumberControllerListener();
+                          }
                         }
                       : SizedBox(width: 114, height: 24),
                     ),
                   );
                 } else {
-                  return SizedBox(width: 114, height: 24);
+                  return SizedBox(width: 24, height: 24, child: CircularProgressIndicator(),);
                 }
               },
             )
@@ -380,35 +386,6 @@ class _InputWidgetState extends State<_InputWidget> {
           border: widget.inputBorder ?? UnderlineInputBorder(),
           hintText: widget.hintText,
         );
-  }
-
-  Widget _buildFuture(BuildContext context) {
-    InputProvider provider = Provider.of<InputProvider>(context);
-
-    return FutureBuilder<List<DropdownMenuItem<Country>>>(
-      future: CountryProvider.getDropdownItemsFromList(provider.countries),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Error loading countries');
-        } else if (snapshot.hasData) {
-          return DropdownButtonHideUnderline(
-            child: DropdownButton<Country>(
-              items: snapshot.data,
-              value: provider.country,
-              onChanged: widget.isEnabled
-              ? (value) {
-                  provider.country = value;
-                  _phoneNumberControllerListener();
-                }
-              : null,
-              
-            ),
-          );
-        } else {
-          return Center(child: CircularProgressIndicator());
-        }
-      },
-    );
   }
 
 }
